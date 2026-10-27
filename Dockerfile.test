@@ -1,0 +1,12 @@
+# Builds matiec (the IEC 61131-3 compiler OpenPLC uses), compiles the ST program and runs
+# every test. Works the same on a Mac with Docker Desktop and on Linux.
+#   docker build -f Dockerfile.test -t e84-test .
+#   docker run --rm -v "$PWD":/app e84-test
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential flex bison autoconf automake libtool git ca-certificates python3 python3-matplotlib \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 https://github.com/beremiz/matiec.git /opt/matiec \
+    && cd /opt/matiec && autoreconf -i && ./configure && make -j4
+WORKDIR /app
+CMD ["sh", "-c", "make MATIEC=/opt/matiec && cd sim && python3 tests.py && cd .. && python3 sim/run_all.py | tee results.txt"]

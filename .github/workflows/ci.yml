@@ -1,0 +1,26 @@
+name: plc-tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build matiec (IEC 61131-3 compiler)
+        run: |
+          sudo apt-get update && sudo apt-get install -y flex bison autoconf automake libtool python3-matplotlib
+          git clone --depth 1 https://github.com/beremiz/matiec.git $HOME/matiec
+          cd $HOME/matiec && autoreconf -i && ./configure && make -j4
+      - name: Compile both ST variants and the test library
+        run: make MATIEC=$HOME/matiec
+      - name: Quick tests
+        run: cd sim && python3 tests.py
+      - name: All scenarios; fails if any requirement fails
+        run: python3 sim/run_all.py | tee results.txt
+      - name: Shipped OpenPLC files match the sources
+        run: diff openplc/e84_sim.st build/e84_sim.st && diff openplc/e84_io.st build/e84_io.st
+      - uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: |
+            results.txt
+            timing.png
